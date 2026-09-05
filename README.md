@@ -90,3 +90,12 @@ See `CLAUDE_PLAYGROUND.md` in the parent workspace folder for how this fits into
 ## Troubleshooting
 
 See [`ISSUES_AND_FIXES.md`](ISSUES_AND_FIXES.md) for problems hit while setting this project up (Spring Boot version compatibility, Spring Boot 4's Jackson 3 migration, Docker/WSL2, GitHub repo access) and how each was resolved.
+
+## Open work
+
+Tracked as actual [GitHub Issues](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues), not just prose in a log file:
+
+- [#1](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues/1) Verify Docker build/run locally (WSL2 not yet enabled)
+- [#2](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues/2) Verify `AnthropicLlmClient` against the real Anthropic API
+- [#3](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues/3) `ToolSpec` is Anthropic-shaped, not provider-neutral
+- [#4](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues/4) CI: migrate off deprecated `actions/checkout@v4`/`setup-java@v4`

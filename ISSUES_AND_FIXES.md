@@ -65,7 +65,7 @@ and `wsl --status` / `wsl -l -v` printed old legacy usage text instead of real s
 
 **Cause:** WSL2 itself (not just the `wsl.exe` binary) was never enabled on this machine — a hard prerequisite for Docker Desktop's Linux engine on Windows.
 
-**Fix:** Requires an **elevated** `wsl --install` followed by a reboot — outside what Claude Code can do from a non-admin shell. Flagged to the user and deferred; in the meantime, the Dockerfile itself was validated via the GitHub Actions workflow, whose `ubuntu-latest` runner has Docker preinstalled — confirming the image builds correctly independent of the local Docker Desktop issue.
+**Fix:** Requires an **elevated** `wsl --install` followed by a reboot — outside what Claude Code can do from a non-admin shell. Flagged to the user and deferred; in the meantime, the Dockerfile itself was validated via the GitHub Actions workflow, whose `ubuntu-latest` runner has Docker preinstalled — confirming the image builds correctly independent of the local Docker Desktop issue. Tracked as [issue #1](https://github.com/sumantadeshmukh-bot/spring-boot-sample/issues/1).
 
 ## 8. Node.js already installed, but same stale-PATH issue as `gh`
 
