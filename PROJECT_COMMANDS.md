@@ -1,0 +1,129 @@
+# Project commands
+
+Every command run against this repo specifically, in order, with why. Bash (Git Bash) unless noted. See `MACHINE_SETUP_COMMANDS.md` (workspace root) for machine-level tooling setup, and `ISSUES_AND_FIXES.md` for the problems these commands surfaced.
+
+## Scaffolding
+
+```bash
+curl -sS "https://start.spring.io/starter.zip" \
+  -d dependencies=web,data-jpa,h2,validation -d type=maven-project -d language=java \
+  -d baseDir=spring-boot-sample -d groupId=com.example -d artifactId=spring-boot-sample \
+  -d name=spring-boot-sample -d packageName=com.example.sample -d javaVersion=17 \
+  -o spring-boot-sample.zip
+```
+Generate the project via Spring Initializr's API. First attempt pinned `bootVersion=3.3.4` and was rejected (HTTP 400 — out of Initializr's supported range); this final version omits `bootVersion` and lets it default (resolved to Spring Boot 4.1.1).
+
+```bash
+unzip -q spring-boot-sample.zip && rm spring-boot-sample.zip
+```
+Unpack the generated project.
+
+## Build
+
+```bash
+./mvnw clean package -DskipTests
+```
+Compile and package into `target/spring-boot-sample-0.0.1-SNAPSHOT.jar`, skipping tests for a fast first build. Run via Maven's wrapper so no local Maven install is needed — just a JDK.
+
+## Run & smoke test
+
+```powershell
+Start-Process -FilePath "...\java.exe" -ArgumentList "-jar target\spring-boot-sample-0.0.1-SNAPSHOT.jar" -RedirectStandardOutput "app.log" -RedirectStandardError "app-err.log" -WindowStyle Hidden -PassThru
+```
+Run the built jar in the background, logging to files so startup could be inspected without blocking the shell.
+
+```bash
+curl http://localhost:8080/api/hello
+curl -X POST http://localhost:8080/api/items -H "Content-Type: application/json" -d '{"name":"Widget","description":"A sample widget"}'
+curl http://localhost:8080/api/items
+curl http://localhost:8080/api/items/1
+curl -X PUT http://localhost:8080/api/items/1 -H "Content-Type: application/json" -d '{"name":"Widget v2","description":"Updated widget"}'
+curl -X DELETE http://localhost:8080/api/items/1
+```
+Exercise the full CRUD lifecycle end-to-end against the running app.
+
+```powershell
+Stop-Process -Id <pid> -Force
+```
+Stop the running instance once verified (and again later, before adding tests/Docker/CI, so a rebuild wouldn't collide with a live jar).
+
+## Version control & GitHub
+
+```bash
+git init
+git add -A
+git status
+```
+Initialize the repo and review what would be committed.
+
+```bash
+git rm --cached -f app.log app-err.log
+```
+Un-stage runtime log files that got swept in by `git add -A` before `*.log` was added to `.gitignore`.
+
+```bash
+git commit -m "..."
+```
+First commit (scaffold + CRUD implementation), and later commits for tests/Docker/CI/Claude config, and for README/issues docs.
+
+```bash
+"/c/Program Files/GitHub CLI/gh.exe" repo create spring-boot-sample --private --source=. --remote=origin --push
+```
+Create the GitHub repo and push in one step (used `gh`'s full path since this shell's `PATH` predated its install — see `MACHINE_SETUP_COMMANDS.md`).
+
+```bash
+"/c/Program Files/GitHub CLI/gh.exe" repo view sumantadeshmukh-bot/spring-boot-sample --json name,url,visibility,owner
+```
+Diagnose a "Page not found" report from the user — confirmed the repo existed and was private, owned by the `gh`-authenticated account (`sumantadeshmukh-bot`), which turned out to differ from the user's browser login.
+
+```bash
+"/c/Program Files/GitHub CLI/gh.exe" repo edit sumantadeshmukh-bot/spring-boot-sample --visibility public --accept-visibility-change-consequences
+```
+Made the repo public to sidestep the account-mismatch access issue.
+
+```bash
+git push
+```
+Push each subsequent round of commits.
+
+## Tests
+
+```bash
+./mvnw test
+```
+Run the suite. First run failed to compile — `ItemControllerTest` used `com.fasterxml.jackson.databind.ObjectMapper` and `org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc`, both moved in Spring Boot 4.1's Jackson 3 migration.
+
+```bash
+./mvnw dependency:tree | grep -E "jackson|webmvc|test|validation|h2"
+```
+Diagnose the compile failure by seeing what was actually on the classpath (revealed `tools.jackson.core:jackson-databind:3.1.5`, not the classic `com.fasterxml.jackson.core`).
+
+```bash
+find "$HOME/.m2/repository/org/springframework/boot/spring-boot-webmvc-test" -name "*.jar"
+unzip -l <jar> | grep -i "MockMvc"
+find "$HOME/.m2/repository/tools/jackson/core/jackson-databind" -name "*.jar"
+unzip -l <jar> | grep "ObjectMapper.class"
+```
+Locate the classes' actual new package paths directly inside the downloaded jars, rather than guessing from outdated docs. Fixed the imports accordingly and re-ran `./mvnw test` to green.
+
+```bash
+git ls-files -s mvnw
+git update-index --chmod=+x mvnw
+```
+`mvnw` was tracked as `100644` (no executable bit) because it was created/staged on Windows. GitHub Actions' `ubuntu-latest` runner needs it executable, so the bit was set directly in git's index.
+
+## Docker
+
+```bash
+docker build -t spring-boot-sample .
+docker run --rm -p 8080:8080 spring-boot-sample
+```
+The intended local verification commands — not yet run successfully on this machine because Docker Desktop's engine can't start until WSL2 is enabled (see `ISSUES_AND_FIXES.md` item 7). The Dockerfile itself was instead validated via the CI workflow below, whose runner has Docker preinstalled.
+
+## CI
+
+```bash
+"/c/Program Files/GitHub CLI/gh.exe" run list --repo sumantadeshmukh-bot/spring-boot-sample --limit 5
+"/c/Program Files/GitHub CLI/gh.exe" run watch <run-id> --repo sumantadeshmukh-bot/spring-boot-sample --exit-status
+```
+Confirm the just-pushed `.github/workflows/ci.yml` actually triggered, then watch it through to completion — build, test, and Docker build all passed.
