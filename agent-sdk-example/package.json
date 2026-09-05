@@ -1,0 +1,13 @@
+{
+  "name": "spring-boot-sample-agent-sdk-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A standalone Claude Agent SDK example — a custom agent with an in-process tool that queries the spring-boot-sample app's live REST API. See README.md for what this demonstrates and how it differs from the hand-rolled Claude API client in src/main/java/com/example/sample/ai/.",
+  "scripts": {
+    "start": "node item-agent.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.261"
+  }
+}

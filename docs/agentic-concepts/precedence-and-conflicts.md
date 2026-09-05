@@ -1,16 +1,18 @@
 # Precedence and conflicts, across all of it
 
-Seven distinct mechanisms are now live in this workspace: `CLAUDE.md`, skills, subagents, hooks, MCP servers, plugins, and settings/permissions. They don't all resolve conflicts the same way. This is the one thing worth internalizing above all the individual feature docs.
+Eight distinct mechanisms are now live in this workspace: `CLAUDE.md`, skills, subagents, hooks, MCP servers, plugins, settings/permissions, and (via `agent-sdk.md`) the Agent SDK's own settings-resolution API. They don't all resolve conflicts the same way. This is the one thing worth internalizing above all the individual feature docs.
 
 ## Two fundamentally different resolution models
 
-**Deterministic override** (settings.json — permissions, hooks config, env vars): a strict precedence chain, highest wins outright:
+**Deterministic override** (settings.json — permissions, hooks config, env vars): a real precedence chain exists, but it's more textured than "five tiers, highest wins" — corrected here after inspecting the Claude Agent SDK's own type definitions (`resolveSettings()` in `@anthropic-ai/claude-agent-sdk`), which document the merge engine's actual source names rather than requiring anyone to guess:
 
-1. Enterprise managed policy (cannot be overridden by anything below)
-2. Command-line arguments
-3. Local project settings (`.claude/settings.local.json` — personal, gitignored)
-4. Shared project settings (`.claude/settings.json` — committed, team-wide — what this repo's hooks live in)
-5. User settings (`~/.claude/settings.json` — global default)
+- The three filesystem-backed tiers are named, precisely: **`user`** (`~/.claude/settings.json`), **`project`** (`.claude/settings.json` — committed, team-wide — what this repo's hooks live in), and **`local`** (`.claude/settings.local.json` — personal, gitignored).
+- Above those sits a **`managed`** (policy) tier — but it is *not* a single file. Its own sub-origins are named explicitly: `helper`, `remote`, `plist` (macOS MDM), `hklm`/`hkcu` (Windows registry), `file` (an on-disk `managed-settings.json`), and `parent`. An admin's policy can arrive through any of these.
+- A **`flag`** source exists too — the `--settings` CLI flag.
+- **The managed tier is a restriction mechanism, not a general override**: the SDK's docs are explicit that managed settings are "filtered through a restrictive-key allowlist (`allowManaged*Only` locks, `permissions.deny`/`ask`, sandbox restrictions); non-restrictive keys such as `model`, `env`, `cleanupPeriodDays` are silently dropped." An enterprise policy can *forbid* things; it cannot use this channel to silently set your model or inject environment variables.
+- **A repo cannot silently grant itself elevated trust**: `permissions.defaultMode` is subject to "a separate trust filter" before an escalating mode (`bypassPermissions`, `auto`, `acceptEdits`) committed in a repo's own settings file is honored — a compromised or malicious repository can't just write `bypassPermissions` into `.claude/settings.json` and have it silently take effect.
+
+What's **not** independently verified here: the exact total ranking across all five source names (`user`/`project`/`local`/`managed`/`flag`) in every case — the SDK's own comments name the sources and describe `managed`'s restrictive scope precisely, but don't spell out one single ordered list in the excerpt inspected. Treat "more specific/local generally wins, except a restrictive managed policy always wins for what it explicitly restricts" as the safe practical summary, and check Anthropic's docs directly before relying on exact ordering for anything security-critical. This kind of "found real evidence but not the complete picture" moment is itself worth noticing: even primary-source type definitions don't always spell out everything, and knowing where the gap is matters more than pretending there isn't one.
 
 **Contextual judgment** (`CLAUDE.md`): no strict override. Every applicable file — user, parent-directory, project, subdirectory — is loaded as context simultaneously. If two disagree, Claude weighs the more specific one as more relevant, but this is a strong tendency, not a guarantee, unlike the settings chain above. See `claude-md-hierarchy.md` for why this distinction matters practically.
 
@@ -41,3 +43,5 @@ This is the single biggest practical nuance discovered while building this works
 | Hooks | `log-edit.js`, `compile-check.js` | Real, both success and failure paths manually verified |
 | MCP server | `filesystem-demo` (`.mcp.json`) | Real connection, proven via raw protocol script |
 | Plugins | `plugin-example/` | Illustrative scaffold only — not installed, nothing in this environment's catalog to install |
+| Agent SDK | `agent-sdk-example/` | Real, run live twice — real auth inheritance, real cost, one real bug found and fixed (see `agent-sdk.md`) |
+| App-level agentic loop | `src/main/java/com/example/sample/ai/` | Real feature, real guardrails, all fixed after a genuine 3-agent parallel review (see `agentic-application-layer.md`) |

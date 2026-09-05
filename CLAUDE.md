@@ -45,6 +45,8 @@ Single-module Spring Boot 4.1.1 app (`com.example.sample` package, Java 21). It'
 
 `ItemControllerTest` covers the CRUD flow end-to-end via `@SpringBootTest` + `MockMvc`; `SpringBootSampleApplicationTests` just checks the Spring context loads.
 
+**`ai/` subpackage** (`com.example.sample.ai`) — a self-contained agentic tool-calling layer, intentionally structured differently from the rest of the app (it has a real service class, `AiOrchestrationService`, breaking the "no service layer" rule above on purpose — see `docs/agentic-concepts/agentic-application-layer.md` for why). `POST /api/ai/ask` takes a free-text query, has an `LlmClient` (mocked by default via `app.ai.provider=mock`, or real via `anthropic` + `ANTHROPIC_API_KEY`) decide which of 3 whitelisted tools to call against `ItemRepository`, then summarizes the result. Has its own guardrails (`PromptInjectionGuard`, per-client `RateLimiter`), structured tracing (`AiTrace`, logged as `ai_trace`/`ai_security_reject`/`ai_rate_limit_reject`), and an eval-style test suite (`MockLlmClientEvalTest`) distinct from ordinary unit tests. This package went through a real 3-agent security/coverage/architecture review after being written — see `ISSUES_AND_FIXES.md` items 12–15 for what it caught.
+
 **Spring Boot 4 package renames** (easy to trip on, since most examples/docs online still show the old paths): this app is on Boot 4.1, which moved to Jackson 3 and reorganized several test-support classes — `ObjectMapper` is `tools.jackson.databind.ObjectMapper` (not `com.fasterxml.jackson.databind`), and `AutoConfigureMockMvc` is `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` (not `org.springframework.boot.test.autoconfigure.web.servlet`). Check `mvnw dependency:tree` before assuming a class's package if a compile fails with "package does not exist" — this is a Boot 4 module-split issue, not a missing dependency.
 
 ## Claude Code feature setup
@@ -55,3 +57,5 @@ This repo doubles as a working demo of Claude Code's agentic features — see `d
 - `.mcp.json` declares a project-scoped filesystem MCP server. A fresh session in this directory will prompt to trust it before its tools become available.
 
 Also see `src/main/java/com/example/sample/CLAUDE.md` (subdirectory-level) and `E:\Projects\CLAUDE.md` (parent-directory-level) for the rest of the `CLAUDE.md` hierarchy demonstrated in this workspace.
+
+`agent-sdk-example/` at the repo root is a **separate Node.js project**, not part of the Maven build — a standalone Claude Agent SDK example, unrelated to the Spring app's own build/test lifecycle except that its one custom tool calls this app's live `/api/items` endpoint. See its own README and `docs/agentic-concepts/agent-sdk.md`.

@@ -142,3 +142,38 @@ node .claude/hooks/compile-check.js < payload.json
 Manually invoke each `PostToolUse` hook with a synthetic JSON payload (`{"tool_name":"Edit","tool_input":{"file_path":"..."}}`) to verify both the success and failure paths, since hooks added mid-session don't fire on real edits in that same session (see `ISSUES_AND_FIXES.md` item 11). The failure path was verified by temporarily breaking `Item.java`'s syntax, confirming the hook caught the real compiler error (exit 2), then restoring the file and re-running `./mvnw test`.
 
 **Live multi-agent demo** (via the `Agent` tool, not a shell command): spawned a `general-purpose` agent instructed to follow `.claude/agents/java-spring-dev.md`'s persona to implement the `/api/items/search` endpoint, then a second independent `general-purpose` agent instructed to follow `.claude/agents/spring-code-reviewer.md`'s persona to review it. (Spawning them as their actual named subagent types failed — `Agent type 'java-spring-dev' not found` — since subagents created mid-session aren't hot-loaded; see `ISSUES_AND_FIXES.md` item 11.) The reviewer's one real finding (missing test for the blank-query branch) was then fixed directly. Full writeup: `docs/agentic-concepts/multi-agent-flow.md`.
+
+**Live parallel fan-out demo**: three `general-purpose` agents spawned in one batch (security / test-coverage / architecture review of `src/main/java/com/example/sample/ai/`), each independent. Five real findings across all three, all fixed directly afterward. Full writeup: `docs/agentic-concepts/orchestration-patterns.md`.
+
+## App-level agentic layer (`src/main/java/com/example/sample/ai/`)
+
+```bash
+./mvnw clean package -DskipTests   # rebuild the jar after adding the ai/ package
+java -jar target/spring-boot-sample-0.0.1-SNAPSHOT.jar
+curl -X POST http://localhost:8080/api/ai/ask -H "Content-Type: application/json" -d '{"query":"find widget"}'
+```
+Smoke-test the mocked tool-calling loop end-to-end against the real running app (default `app.ai.provider=mock`, no API key needed). Confirmed the structured trace log (`ai_trace ...`) and the security-rejection log (`ai_security_reject ...`) both appear in stdout for their respective cases.
+
+```bash
+./mvnw -o clean test
+```
+Forces a real recompile before testing — plain `./mvnw -o test` was seen to report `Nothing to compile - all classes are up to date` despite real source edits (see `ISSUES_AND_FIXES.md` item 15); `clean` avoids relying on Maven's timestamp-based staleness check.
+
+## Claude Agent SDK (`agent-sdk-example/`)
+
+```bash
+npm view @anthropic-ai/claude-agent-sdk versions --json
+npm view @anthropic-ai/claude-agent-sdk dist-tags version description
+```
+Verified the package is real (not a guessed/hallucinated name) before writing any code against it, and got its actual latest version.
+
+```bash
+npm install @anthropic-ai/claude-agent-sdk --no-save   # in a scratch dir
+```
+Installed it into a throwaway location to read its actual `.d.ts` type definitions and `README.md` directly, rather than writing example code from assumption. This is where the `resolveSettings()`/`SettingSource`/`PolicySettingsOrigin` types were found, correcting `docs/agentic-concepts/precedence-and-conflicts.md`'s settings-precedence section with primary-source evidence.
+
+```bash
+node minimal-test.mjs        # trivial query(), proved auth inheritance + real cost reporting
+node custom-tool-test.mjs    # tool()+createSdkMcpServer() calling this repo's live /api/items
+```
+Two real, paid API calls (~$0.15 + ~$0.04) run once each — deliberately not repeated further given the real cost per call. See `docs/agentic-concepts/agent-sdk.md` and `ISSUES_AND_FIXES.md` items 16–17 for what each run revealed. The scratch directory these ran from was deleted afterward; the cleaned-up, corrected version lives in `agent-sdk-example/item-agent.mjs`.

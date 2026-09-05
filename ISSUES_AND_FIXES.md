@@ -98,3 +98,51 @@ and `wsl --status` / `wsl -l -v` printed old legacy usage text instead of real s
 **Cause:** Claude Code enumerates project-level subagents, skills, hooks, and MCP servers once at session start — none of the four are hot-reloaded when their backing files change mid-session.
 
 **Fix:** No fix, just a workflow adjustment — for anything in these four categories, verify by direct/manual invocation within the session that created it (e.g., running a hook script by hand with a synthetic payload, or having a generic agent read a persona file explicitly), and expect the "real" registered version to only be available starting from the next fresh session. See `docs/agentic-concepts/precedence-and-conflicts.md` for the full pattern.
+
+## 12. `Item` had no `toString()`, so an LLM-facing summary read as a memory address
+
+**Symptom:** `MockLlmClient.summarize()`'s text output for a search result read `Found 1 matching item(s): [com.example.sample.Item@35f34ccc]` instead of anything human-readable — caught by a test assertion, not by inspection.
+
+**Cause:** `Item` relied on `Object.toString()` by default; `List.of(item).toString()` calls it implicitly.
+
+**Fix:** Added an explicit `toString()` to `Item`. Small, but a good example of a bug an LLM-facing feature surfaces immediately that a pure-CRUD JSON API never would have (JSON serialization uses field reflection, not `toString()`, so this was invisible until something formatted the object as text for a human/model to read).
+
+## 13. A global rate limiter is a DoS vector, not just a simplification
+
+**Symptom:** Found by a security-focused agent review, not by testing: the first version of `RateLimiter` used one process-wide counter (30 requests/60s total). Any single caller sending 30 quick requests would exhaust the *entire application's* AI-query budget for every other user.
+
+**Cause:** Modeled the limiter as "a global budget" when the actual requirement was "a budget per client."
+
+**Fix:** Keyed the limiter by client (remote address) using a `ConcurrentHashMap<String, Bucket>` instead of one shared counter. Documented as still not production-grade (in-memory only, no eviction, doesn't survive a restart or scale past one instance) — but the specific DoS vector is closed.
+
+## 14. `@Valid` was declared but never applied — dead validation
+
+**Symptom:** `AiQueryController.AskRequest` declared `@NotBlank` on its `query` field, but the controller method's parameter was never annotated `@Valid` — so Bean Validation silently never ran. Masked in practice because `PromptInjectionGuard` independently rejected blank input, which hid the gap.
+
+**Cause:** Easy to miss: the annotation exists on the DTO, reads correctly, and does nothing without `@Valid` at the point of use.
+
+**Fix:** Added `@Valid` to the controller parameter. Found by the same security review as issue 13 — a good example of why an independent reviewer catches things authorship-blindness misses even in a codebase the author knows well.
+
+## 15. `execSync`-launched Maven can silently skip recompilation ("Nothing to compile — all classes are up to date")
+
+**Symptom:** After editing several `.java` files directly, `mvnw compile` reported `Nothing to compile - all classes are up to date` and left stale `.class` files in place — a deliberately-introduced syntax error (for testing a hook's failure path) was not caught until `target/classes/.../Item.class` was deleted by hand to force recompilation.
+
+**Cause:** Maven's incremental-compilation staleness check compares source and class file timestamps; edits made in quick succession (well within the same second, or via a tool that doesn't reliably bump mtime) can fall under that check's resolution.
+
+**Fix:** No general fix — workaround was `rm` the specific stale `.class` file, or use `mvnw clean compile`/`clean test` when in doubt about whether a real recompile happened. Worth remembering as a "trust but verify" habit: a silent `BUILD SUCCESS` after an edit doesn't guarantee the edit was actually compiled.
+
+## 16. Claude Agent SDK auth and cost — inherited, not configured, and real from the first call
+
+**Symptom:** Not a bug — a genuine discovery from actually running `@anthropic-ai/claude-agent-sdk`'s `query()` with no `ANTHROPIC_API_KEY` set anywhere. It worked immediately, reporting `"apiKeySource":"none"`, and the first trivial call cost $0.148 (a real, transparently-reported charge, not an estimate).
+
+**Cause:** The SDK spawns the Claude Code CLI's own bundled binary as a subprocess and inherits whatever authentication that binary already has configured on the machine — a fundamentally different auth model from `AnthropicLlmClient`'s "you must supply your own API key" design.
+
+**Fix:** N/A — documented as the key architectural distinction in `docs/agentic-concepts/agent-sdk.md`. Practical implication: every Agent SDK call on an authenticated machine costs real money immediately, with no built-in "mock mode" the way this repo's own `LlmClient` abstraction provides — budget test runs accordingly.
+
+## 17. `maxTurns` set too low silently truncates a multi-step agent run
+
+**Symptom:** A Claude Agent SDK call using a custom tool (`agent-sdk-example/`) failed with `"Reached maximum number of turns (2)"` after successfully calling the tool — the model had used one turn discovering the tool via `ToolSearch` and one turn calling it, leaving no budget for its final text reply.
+
+**Cause:** `maxTurns: 2` didn't account for tool-discovery consuming a turn before the tool call itself.
+
+**Fix:** Raised to `maxTurns: 4`. Kept as a documented example rather than quietly fixed-and-forgotten, since it's a genuine illustration of the SDK's built-in cost/safety controls (`maxTurns`, `maxBudgetUsd`) doing exactly their job — catching a runaway or underspecified loop — rather than a defect in the SDK itself.
