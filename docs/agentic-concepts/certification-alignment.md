@@ -22,7 +22,7 @@ Three items surfaced in the original gap analysis were **not** built, on purpose
 
 - **Prompt chaining** as a distinct pattern from tool composition — the two overlap enough (both are "one step's output feeds the next") that building a second, separate example would have been redundant rather than additive.
 - **Plan mode** — a Claude Code *interactive habit* (a mode you invoke while working), not something that produces application code. Documenting "remember to use plan mode" isn't in the same category as the other gaps, which were all concrete, buildable features.
-- **Routing/supervisor as a live function** — kept conceptual (`orchestration-patterns.md` §4) rather than forced into code, since with only 3 tools and 3 demonstrated patterns, a real routing function would be trivial to the point of not teaching anything a decision table doesn't already convey. Worth building for real if the tool/pattern count ever grows enough that routing logic would be non-trivial.
+- **Routing/supervisor as a live function** — kept conceptual (`orchestration-patterns.md` §4) rather than forced into code, since with only 4 tools and 3 demonstrated orchestration patterns, a real routing function would be trivial to the point of not teaching anything a decision table doesn't already convey. Worth building for real if the tool/pattern count ever grows enough that routing logic would be non-trivial.
 
 ## What to do with this workspace toward exam prep
 

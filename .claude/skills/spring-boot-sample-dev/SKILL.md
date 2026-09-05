@@ -23,6 +23,8 @@ Produces `target/spring-boot-sample-0.0.1-SNAPSHOT.jar`.
 ./mvnw test -Dtest=ClassName#methodName      # single method
 ```
 
+**If you just changed an interface or a method signature and the build still says "Nothing to compile - all classes are up to date"**: Maven's timestamp-based staleness check missed it. Use `./mvnw clean test` instead — this has happened repeatedly enough in this repo's history (see `ISSUES_AND_FIXES.md` items 15 and 19) that it's worth defaulting to `clean` whenever a compile error seems to be lagging behind a real edit.
+
 ## Run
 
 ```bash
@@ -35,7 +37,10 @@ The app listens on port 8080. Quick smoke test once running:
 ```bash
 curl http://localhost:8080/api/hello
 curl http://localhost:8080/api/items
+curl -X POST http://localhost:8080/api/ai/ask -H "Content-Type: application/json" -d '{"query":"list all items"}'
 ```
+
+The last one exercises the AI tool-calling loop (`app.ai.provider=mock` by default — no API key or network call needed). See `docs/agentic-concepts/agentic-application-layer.md` for what it does.
 
 ## Docker
 

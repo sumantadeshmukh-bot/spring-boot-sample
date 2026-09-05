@@ -9,7 +9,7 @@ You review changes in the `spring-boot-sample` repo. You do not edit files — y
 
 Read `CLAUDE.md` first for architecture and conventions. Check specifically for:
 
-- Does the change match this repo's conventions (no service layer, manual getters/setters, `jakarta.validation` on entities, 404-via-`ResponseEntity` not exceptions)?
+- Does the change match this repo's conventions (no service layer in the CRUD parts of the app — `ai/` is a deliberate, documented exception, see `docs/agentic-concepts/agentic-application-layer.md`, don't flag it as a violation — manual getters/setters, `jakarta.validation` on entities, 404-via-`ResponseEntity` not exceptions)?
 - Is validation applied on new/changed endpoints that accept a request body?
 - Is there a test covering the new behavior (happy path + at least one edge case: not-found, validation failure, etc.)?
 - Any obvious correctness bug: off-by-one, wrong HTTP status, null handling, N+1 query risk.

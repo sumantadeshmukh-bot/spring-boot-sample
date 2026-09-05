@@ -41,7 +41,8 @@ This is the single biggest practical nuance discovered while building this works
 | Subagents | `java-spring-dev`, `spring-code-reviewer` | Real personas; actually exercised via `general-purpose` stand-in this session |
 | Multi-agent flow | build → review → fix, on the search feature | Genuinely run, not scripted — see `multi-agent-flow.md` |
 | Hooks | `log-edit.js`, `compile-check.js` | Real, both success and failure paths manually verified |
-| MCP server | `filesystem-demo` (`.mcp.json`) | Real connection, proven via raw protocol script |
+| MCP server (tools) | `filesystem-demo` (`.mcp.json`) | Real connection, proven via raw protocol script |
+| MCP server (resources/prompts) | `item-inventory` (`mcp-resources-prompts-example/`) | Real connection, proven via raw protocol script — including a resource that reads this app's own live data (see `mcp-resources-and-prompts.md`) |
 | Plugins | `plugin-example/` | Illustrative scaffold only — not installed, nothing in this environment's catalog to install |
 | Agent SDK | `agent-sdk-example/` | Real, run live twice — real auth inheritance, real cost, one real bug found and fixed (see `agent-sdk.md`) |
-| App-level agentic loop | `src/main/java/com/example/sample/ai/` | Real feature, real guardrails, all fixed after a genuine 3-agent parallel review (see `agentic-application-layer.md`) |
+| App-level agentic loop | `src/main/java/com/example/sample/ai/` | Real feature — tool composition, a confirmation flow, prompt caching/prefill/retries, the Batches API — hardened by two real review cycles (an initial 3-agent parallel review, then a second pass closing composition/caching/error-handling gaps) and one live bug found by running the composed flow end-to-end (see `agentic-application-layer.md`) |
