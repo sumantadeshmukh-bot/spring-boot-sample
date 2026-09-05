@@ -19,7 +19,11 @@ public class ToolRegistry {
                         Map.of("id", "The numeric ID of the item to fetch.")),
                 new ToolSpec("list_items",
                         "List all items, with no filtering.",
-                        Map.of())
+                        Map.of()),
+                new ToolSpec("delete_item",
+                        "Delete an item by its numeric ID. Destructive - the app requires a separate human "
+                                + "confirmation step before this actually executes; calling it only queues the deletion.",
+                        Map.of("id", "The numeric ID of the item to delete."))
         );
     }
 }

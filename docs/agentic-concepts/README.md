@@ -10,9 +10,10 @@ Everything in this folder documents a feature that's actually implemented and te
 - [`plugins.md`](plugins.md) — the plugin packaging model, plus a scaffolded (not installed) example
 
 **MCP and the Claude API/Agent SDK**
-- [`mcp-servers.md`](mcp-servers.md) — a real, working filesystem MCP server connection, proven via a raw protocol script
+- [`mcp-servers.md`](mcp-servers.md) — a real, working filesystem MCP server connection (the **tools** primitive), proven via a raw protocol script
+- [`mcp-resources-and-prompts.md`](mcp-resources-and-prompts.md) — the other two MCP primitives, **resources** and **prompts**, via a second custom server — live-verified, including a resource that reads this app's own live API
 - [`agent-sdk.md`](agent-sdk.md) — the Claude Agent SDK, run live twice against this repo's own API — real auth inheritance, real cost, one real bug found and fixed
-- [`agentic-application-layer.md`](agentic-application-layer.md) — the app itself becomes agentic: a hand-rolled Claude API tool-calling loop (`src/main/java/com/example/sample/ai/`), with guardrails, tracing, and an eval harness, hardened by a real 3-agent review
+- [`agentic-application-layer.md`](agentic-application-layer.md) — the app itself becomes agentic: a hand-rolled Claude API tool-calling loop with **multi-step composition** and a **confirmation flow** for destructive actions, guardrails, structured **prompt engineering** + **caching** + **response prefill** + **retry/backoff** + the **Message Batches API**, tracing, and an eval harness — hardened by two real review cycles
 
 **Orchestration and governance**
 - [`multi-agent-flow.md`](multi-agent-flow.md) — sequential build → review → fix, run for real on the search feature

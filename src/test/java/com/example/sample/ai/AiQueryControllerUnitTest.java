@@ -19,7 +19,8 @@ import static org.mockito.Mockito.when;
 class AiQueryControllerUnitTest {
 
     private final AiOrchestrationService orchestrationService = mock(AiOrchestrationService.class);
-    private final AiQueryController controller = new AiQueryController(orchestrationService);
+    private final LlmClient llmClient = mock(LlmClient.class); // mock, not MockLlmClient/AnthropicLlmClient - stands in for "whichever provider"
+    private final AiQueryController controller = new AiQueryController(orchestrationService, llmClient);
     private final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
 
     private ResponseEntity<?> ask(String query) {
@@ -54,5 +55,27 @@ class AiQueryControllerUnitTest {
         when(orchestrationService.ask(anyString(), any())).thenReturn(trace);
         ResponseEntity<?> response = ask("whatever");
         assertEquals(200, response.getStatusCode().value());
+    }
+
+    @Test
+    void confirmWithValidTokenReturns200() {
+        when(orchestrationService.confirm("tok")).thenReturn(true);
+        ResponseEntity<?> response = controller.confirm(new AiQueryController.ConfirmRequest("tok"));
+        assertEquals(200, response.getStatusCode().value());
+    }
+
+    @Test
+    void confirmWithUnknownTokenReturns404() {
+        when(orchestrationService.confirm("bad-tok")).thenReturn(false);
+        ResponseEntity<?> response = controller.confirm(new AiQueryController.ConfirmRequest("bad-tok"));
+        assertEquals(404, response.getStatusCode().value());
+    }
+
+    @Test
+    void batchEndpointReturns501WhenNotUsingRealProvider() {
+        // llmClient is a plain Mockito mock here, not an AnthropicLlmClient instance -
+        // exercises the same "batch requires the real provider" guard mock mode hits.
+        ResponseEntity<?> response = controller.submitBatch(new AiQueryController.BatchRequest(java.util.List.of("a")));
+        assertEquals(501, response.getStatusCode().value());
     }
 }

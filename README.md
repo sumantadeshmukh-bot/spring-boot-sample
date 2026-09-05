@@ -39,6 +39,8 @@ The app listens on `http://localhost:8080`.
 | PUT | `/api/items/{id}` | Update an item |
 | DELETE | `/api/items/{id}` | Delete an item |
 | POST | `/api/ai/ask` | Natural-language query (`{"query": "find widget"}`) — a mocked-by-default LLM tool-calling loop; see below |
+| POST | `/api/ai/confirm` | Approve a queued destructive action (`{"token": "..."}`) — required before `delete_item` actually deletes anything |
+| POST | `/api/ai/batch` | Submit prompts to Anthropic's Message Batches API — 501 in mock mode |
 
 ```bash
 curl http://localhost:8080/api/hello
@@ -63,15 +65,20 @@ docker run --rm -p 8080:8080 spring-boot-sample
 
 ## AI features (the app itself, not just the tooling)
 
-`POST /api/ai/ask` runs a real tool-calling agent loop against the `Item` data — guardrailed (prompt-injection checks, per-client rate limiting), traced (structured `ai_trace` logging), and eval-tested:
+`POST /api/ai/ask` runs a real tool-calling agent loop against the `Item` data, including **multi-step composition** and a **confirmation flow** for destructive actions — guardrailed (prompt-injection checks, per-client rate limiting), traced (structured `ai_trace` logging), and eval-tested:
 
 ```bash
-curl -X POST http://localhost:8080/api/ai/ask -H "Content-Type: application/json" -d '{"query":"find widget"}'
+curl -X POST http://localhost:8080/api/items -H "Content-Type: application/json" -d '{"name":"Widget","description":"..."}'
+curl -X POST http://localhost:8080/api/ai/ask -H "Content-Type: application/json" -d '{"query":"delete the item named Widget"}'
+# -> returns a confirmToken; nothing is deleted yet
+curl -X POST http://localhost:8080/api/ai/confirm -H "Content-Type: application/json" -d '{"token":"<confirmToken from above>"}'
 ```
 
-Runs fully mocked by default (`app.ai.provider=mock` — no API key, no cost, deterministic, safe for CI). Set `app.ai.provider=anthropic` + `ANTHROPIC_API_KEY` to use the real Anthropic API instead. See [`docs/agentic-concepts/agentic-application-layer.md`](docs/agentic-concepts/agentic-application-layer.md).
+Runs fully mocked by default (`app.ai.provider=mock` — no API key, no cost, deterministic, safe for CI). Set `app.ai.provider=anthropic` + `ANTHROPIC_API_KEY` to use the real Anthropic API instead, which additionally demonstrates prompt caching, a structured system prompt, response prefill, transient/permanent error retries, and the Message Batches API. See [`docs/agentic-concepts/agentic-application-layer.md`](docs/agentic-concepts/agentic-application-layer.md).
 
 A separate, standalone example in [`agent-sdk-example/`](agent-sdk-example/) uses the **Claude Agent SDK** (a different thing from the Claude API — see [`docs/agentic-concepts/agent-sdk.md`](docs/agentic-concepts/agent-sdk.md)) to build a Node.js agent with a custom tool that calls this app's own `/api/items` endpoint — verified working live, with real cost.
+
+Another standalone example in [`mcp-resources-prompts-example/`](mcp-resources-prompts-example/) covers MCP's **resources** and **prompts** primitives (distinct from tools) — see [`docs/agentic-concepts/mcp-resources-and-prompts.md`](docs/agentic-concepts/mcp-resources-and-prompts.md).
 
 ## Claude Code setup
 
@@ -83,7 +90,7 @@ Quick pointers:
 - [`.claude/skills/spring-boot-sample-dev/SKILL.md`](.claude/skills/spring-boot-sample-dev/SKILL.md) — build/test/run/Docker recipes as an invocable skill.
 - [`.claude/agents/java-spring-dev.md`](.claude/agents/java-spring-dev.md) / [`spring-code-reviewer.md`](.claude/agents/spring-code-reviewer.md) — implementer + read-only reviewer subagents.
 - [`.claude/settings.json`](.claude/settings.json) + [`.claude/hooks/`](.claude/hooks/) — two `PostToolUse` hooks (edit logging, compile-on-save).
-- [`.mcp.json`](.mcp.json) — a project-scoped filesystem MCP server.
+- [`.mcp.json`](.mcp.json) — two project-scoped MCP servers: `filesystem-demo` (tools) and `item-inventory` (resources/prompts).
 
 See `CLAUDE_PLAYGROUND.md` in the parent workspace folder for how this fits into a broader user/workspace/project layering.
 

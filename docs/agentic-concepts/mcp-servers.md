@@ -1,6 +1,8 @@
 # MCP servers
 
-MCP (Model Context Protocol) is how Claude Code connects to external tool providers — a separate process, speaking a standard JSON-RPC protocol over stdio (or HTTP/SSE for remote servers), that exposes a set of tools Claude can call. This is a genuinely different mechanism from skills/agents/hooks: those are all Claude Code reading its own markdown/JSON config, whereas an MCP server is an independent program with its own capabilities, potentially written by a third party.
+MCP (Model Context Protocol) is how Claude Code connects to external tool providers — a separate process, speaking a standard JSON-RPC protocol over stdio (or HTTP/SSE for remote servers), that exposes tools, resources, and prompts Claude can use. This is a genuinely different mechanism from skills/agents/hooks: those are all Claude Code reading its own markdown/JSON config, whereas an MCP server is an independent program with its own capabilities, potentially written by a third party.
+
+This doc covers the **tools** primitive, via the `filesystem-demo` server below. See `mcp-resources-and-prompts.md` for the other two primitives (resources, prompts), which a second custom server in this repo exercises — tools alone is only a third of what MCP actually offers.
 
 ## What's configured here
 

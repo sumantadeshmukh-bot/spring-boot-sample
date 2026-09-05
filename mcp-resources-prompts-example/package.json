@@ -1,0 +1,10 @@
+{
+  "name": "mcp-resources-prompts-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A custom MCP server demonstrating the 'resources' and 'prompts' primitives, distinct from the 'tools' primitive already covered by .mcp.json's filesystem-demo server elsewhere in this repo.",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  }
+}

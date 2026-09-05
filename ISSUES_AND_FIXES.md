@@ -146,3 +146,19 @@ and `wsl --status` / `wsl -l -v` printed old legacy usage text instead of real s
 **Cause:** `maxTurns: 2` didn't account for tool-discovery consuming a turn before the tool call itself.
 
 **Fix:** Raised to `maxTurns: 4`. Kept as a documented example rather than quietly fixed-and-forgotten, since it's a genuine illustration of the SDK's built-in cost/safety controls (`maxTurns`, `maxBudgetUsd`) doing exactly their job — catching a runaway or underspecified loop — rather than a defect in the SDK itself.
+
+## 18. Java multi-catch rejects related exception types, even when both are wanted
+
+**Symptom:** `catch (HttpServerErrorException | HttpStatusCodeException e)` in `AnthropicLlmClient.post()`'s retry logic failed to compile: `Alternatives in a multi-catch statement cannot be related by subclassing`.
+
+**Cause:** `HttpServerErrorException` is itself a subclass of `HttpStatusCodeException` — Java's multi-catch requires the listed types to be unrelated, since catching the supertype already covers the subtype.
+
+**Fix:** Caught only the supertype (`HttpStatusCodeException`) and used `instanceof` inside the handler to distinguish 5xx (`HttpServerErrorException`) from 429 specifically (`HttpClientErrorException` with status 429) for the transient-vs-permanent retry decision.
+
+## 19. A "fix one filler word" regex silently breaks on compound phrasing
+
+**Symptom:** Found by running the real composed flow live, not by unit tests: "delete the item named Widget" resolved to searching for `"item named Widget"` instead of `"Widget"` — the search came back empty, so the whole delete-by-name flow silently reported "no item matched" for an item that actually existed.
+
+**Cause:** The original heuristic anchored on the *first* trigger word ("delete") and stripped exactly one leading filler word ("the") from what followed, leaving "item named Widget" — the existing unit tests used phrasing simple enough (one filler word, one trigger word) that this compounding case was never exercised.
+
+**Fix:** Rewrote the extraction to anchor on the *last* trigger-word match instead of the first — "delete the item **named** Widget" then needs no filler-stripping at all, since "named" sits immediately before the actual name. Re-verified live end-to-end (create item → ask to delete by name → correct item found → confirmation token issued → confirm → item actually gone). A good reminder that a mock/heuristic component still needs its happy-path phrasing actually exercised end-to-end, not just unit-tested against the simplest inputs that come to mind while writing it.

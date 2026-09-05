@@ -40,12 +40,23 @@ class AnthropicLlmClientJsonTest {
 
         ArrayNode json = client.toToolsJson(tools);
 
-        assertEquals(3, json.size());
+        assertEquals(4, json.size());
         JsonNode searchTool = json.get(0);
         assertEquals("search_items", searchTool.path("name").asString());
         assertEquals("object", searchTool.path("input_schema").path("type").asString());
         assertTrue(searchTool.path("input_schema").path("properties").has("name"));
         assertEquals("name", searchTool.path("input_schema").path("required").get(0).asString());
+    }
+
+    @Test
+    void toToolsJsonMarksOnlyTheLastToolAsACacheBreakpoint() {
+        AnthropicLlmClient client = client();
+        ArrayNode json = client.toToolsJson(new ToolRegistry().allTools());
+
+        for (int i = 0; i < json.size() - 1; i++) {
+            assertTrue(json.get(i).path("cache_control").isMissingNode(), "tool " + i + " should not carry cache_control");
+        }
+        assertEquals("ephemeral", json.get(json.size() - 1).path("cache_control").path("type").asString());
     }
 
     @Test

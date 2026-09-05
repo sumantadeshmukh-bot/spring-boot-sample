@@ -177,3 +177,33 @@ node minimal-test.mjs        # trivial query(), proved auth inheritance + real c
 node custom-tool-test.mjs    # tool()+createSdkMcpServer() calling this repo's live /api/items
 ```
 Two real, paid API calls (~$0.15 + ~$0.04) run once each — deliberately not repeated further given the real cost per call. See `docs/agentic-concepts/agent-sdk.md` and `ISSUES_AND_FIXES.md` items 16–17 for what each run revealed. The scratch directory these ran from was deleted afterward; the cleaned-up, corrected version lives in `agent-sdk-example/item-agent.mjs`.
+
+## Tool composition, confirmation flow, and multi-step orchestration (`ai/`)
+
+```bash
+./mvnw -o clean test
+```
+Ran repeatedly through the `LlmClient` interface refactor (single-shot `decideTool` → history-aware `decideNextStep`) that enabled composition — `clean` needed every time since Maven's staleness check kept reporting "nothing to compile" despite real interface changes (same pattern as `ISSUES_AND_FIXES.md` item 15).
+
+```bash
+curl -X POST http://localhost:8080/api/items -H "Content-Type: application/json" -d '{"name":"Widget","description":"to be deleted"}'
+curl -X POST http://localhost:8080/api/ai/ask -H "Content-Type: application/json" -d '{"query":"delete the item named Widget"}'
+curl http://localhost:8080/api/items   # confirm NOT yet deleted
+curl -X POST http://localhost:8080/api/ai/confirm -H "Content-Type: application/json" -d '{"token":"<token from ask response>"}'
+curl http://localhost:8080/api/items   # confirm now deleted
+curl -X POST http://localhost:8080/api/ai/confirm -H "Content-Type: application/json" -d '{"token":"<same token>"}'   # expect 404, single-use
+```
+Live end-to-end proof of the composed search→delete flow and the confirmation gate — this first run caught a real bug (item 19: the name-extraction regex left "item named Widget" instead of "Widget"), which was fixed and this exact sequence re-run to confirm the fix before moving on.
+
+## MCP resources & prompts (`mcp-resources-prompts-example/`)
+
+```bash
+npm view @modelcontextprotocol/sdk version
+npm install @modelcontextprotocol/sdk --no-save   # in a scratch dir, to read its .d.ts for the real registerResource/registerPrompt signatures
+```
+Verified the package and its actual API shape before writing server code against it, same discipline as the Agent SDK check above.
+
+```bash
+node smoke-test.js
+```
+Drove the raw MCP protocol (`resources/list`, `resources/read`, `prompts/list`, `prompts/get`) against the custom server with the Spring Boot app running live on port 8080 — `resources/read` returned the actual live item data, not a fixture, proving the resource's HTTP call inside its own handler works for real.

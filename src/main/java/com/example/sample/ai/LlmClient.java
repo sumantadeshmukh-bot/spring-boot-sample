@@ -7,12 +7,17 @@ import java.util.List;
  * about the user's query — a real model (AnthropicLlmClient) or a deterministic
  * stand-in (MockLlmClient). Swappable via the app.ai.provider property so the
  * rest of the app never knows which one it's talking to.
+ *
+ * decideNextStep takes the history of steps already completed this turn, not just
+ * the original query — this is what makes tool composition possible (e.g. "delete
+ * the item named Widget" needs a search_items step to resolve the id before a
+ * delete_item step can act on it). A single-step call is just history=List.of().
  */
 public interface LlmClient {
 
-    /** Given a free-text query and the tools available, decide which one to call and with what arguments. */
-    ToolCall decideTool(String userQuery, List<ToolSpec> availableTools);
+    /** Given the query and what's already been done this turn, decide the next action. */
+    Decision decideNextStep(String userQuery, List<ToolSpec> availableTools, List<ToolExecutionStep> history);
 
-    /** Turn a raw tool result back into a natural-language answer to the original query. */
-    String summarize(String userQuery, String toolName, Object toolResult);
+    /** Turn the full sequence of completed steps back into a natural-language answer. */
+    String summarize(String userQuery, List<ToolExecutionStep> history);
 }

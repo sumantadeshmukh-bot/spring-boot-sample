@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * An EVAL, not just a unit test — the distinction matters. A unit test asserts one
@@ -26,6 +27,10 @@ class MockLlmClientEvalTest {
     private final MockLlmClient client = new MockLlmClient();
     private final List<ToolSpec> tools = new ToolRegistry().allTools();
 
+    private Decision.CallTool decide(String query) {
+        return assertInstanceOf(Decision.CallTool.class, client.decideNextStep(query, tools, List.of()));
+    }
+
     @ParameterizedTest(name = "\"{0}\" -> {1}")
     @CsvSource({
             "find widget,               search_items",
@@ -40,8 +45,7 @@ class MockLlmClientEvalTest {
             "list all items,            list_items",
     })
     void resolvesToExpectedTool(String query, String expectedTool) {
-        ToolCall decision = client.decideTool(query, tools);
-        assertEquals(expectedTool, decision.toolName(), "query: " + query);
+        assertEquals(expectedTool, decide(query).toolCall().toolName(), "query: " + query);
     }
 
     @ParameterizedTest(name = "\"{0}\" extracts id {1}")
@@ -51,7 +55,23 @@ class MockLlmClientEvalTest {
             "id: 3,           3",
     })
     void extractsCorrectIdArgument(String query, long expectedId) {
-        ToolCall decision = client.decideTool(query, tools);
-        assertEquals(expectedId, decision.arguments().get("id"));
+        assertEquals(expectedId, decide(query).toolCall().arguments().get("id"));
+    }
+
+    @ParameterizedTest(name = "\"{0}\" (no history) -> search_items, to resolve the name first")
+    @CsvSource({
+            "delete the item named Widget",
+            "remove the broken sprocket",
+    })
+    void deleteByNameFirstResolvesViaSearch(String query) {
+        // Composition: can't call delete_item with a name, only an id - the first step
+        // must be search_items regardless of delete intent being present in the query.
+        assertEquals("search_items", decide(query).toolCall().toolName());
+    }
+
+    @ParameterizedTest(name = "\"delete item {0}\" (no history, explicit id) -> delete_item directly")
+    @CsvSource({"42", "7"})
+    void deleteByExplicitIdSkipsSearch(String id) {
+        assertEquals("delete_item", decide("delete item " + id).toolCall().toolName());
     }
 }

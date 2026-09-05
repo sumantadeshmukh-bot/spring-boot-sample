@@ -3,6 +3,10 @@
     "filesystem-demo": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "E:/Projects/spring-boot-sample"]
+    },
+    "item-inventory": {
+      "command": "node",
+      "args": ["mcp-resources-prompts-example/server.mjs"]
     }
   }
 }
