@@ -127,3 +127,18 @@ The intended local verification commands — not yet run successfully on this ma
 "/c/Program Files/GitHub CLI/gh.exe" run watch <run-id> --repo sumantadeshmukh-bot/spring-boot-sample --exit-status
 ```
 Confirm the just-pushed `.github/workflows/ci.yml` actually triggered, then watch it through to completion — build, test, and Docker build all passed.
+
+## Agentic features (skills, subagents, hooks, MCP) — see `docs/agentic-concepts/`
+
+```bash
+node docs/agentic-concepts/mcp-smoke-test.js
+```
+Manually drive the MCP protocol (`initialize` → `tools/list` → `tools/call`) against the `filesystem-demo` server declared in `.mcp.json`, proving it works without relying on this session's own (session-scoped) MCP connection. First attempt used the official `@modelcontextprotocol/inspector --cli` wrapper, which failed on Windows due to a nested-`npx` path-parsing bug (see `ISSUES_AND_FIXES.md` item 9) — this direct script sidesteps that.
+
+```bash
+node .claude/hooks/log-edit.js < payload.json
+node .claude/hooks/compile-check.js < payload.json
+```
+Manually invoke each `PostToolUse` hook with a synthetic JSON payload (`{"tool_name":"Edit","tool_input":{"file_path":"..."}}`) to verify both the success and failure paths, since hooks added mid-session don't fire on real edits in that same session (see `ISSUES_AND_FIXES.md` item 11). The failure path was verified by temporarily breaking `Item.java`'s syntax, confirming the hook caught the real compiler error (exit 2), then restoring the file and re-running `./mvnw test`.
+
+**Live multi-agent demo** (via the `Agent` tool, not a shell command): spawned a `general-purpose` agent instructed to follow `.claude/agents/java-spring-dev.md`'s persona to implement the `/api/items/search` endpoint, then a second independent `general-purpose` agent instructed to follow `.claude/agents/spring-code-reviewer.md`'s persona to review it. (Spawning them as their actual named subagent types failed — `Agent type 'java-spring-dev' not found` — since subagents created mid-session aren't hot-loaded; see `ISSUES_AND_FIXES.md` item 11.) The reviewer's one real finding (missing test for the blank-query branch) was then fixed directly. Full writeup: `docs/agentic-concepts/multi-agent-flow.md`.

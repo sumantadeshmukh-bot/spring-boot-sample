@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "filesystem-demo": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "E:/Projects/spring-boot-sample"]
+    }
+  }
+}

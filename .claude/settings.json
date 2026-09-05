@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/log-edit.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/compile-check.js",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "spring-boot-sample-toolkit",
+  "version": "0.1.0",
+  "description": "Example plugin bundling this repo's build/test/run skill and its two Java/Spring subagents (implementer + reviewer), illustrating how a plugin packages skills+agents+hooks+MCP servers into one shareable, installable unit.",
+  "author": {
+    "name": "sumanta.deshmukh@gmail.com"
+  }
+}

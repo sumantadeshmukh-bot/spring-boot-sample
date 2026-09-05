@@ -66,3 +66,35 @@ and `wsl --status` / `wsl -l -v` printed old legacy usage text instead of real s
 **Cause:** WSL2 itself (not just the `wsl.exe` binary) was never enabled on this machine — a hard prerequisite for Docker Desktop's Linux engine on Windows.
 
 **Fix:** Requires an **elevated** `wsl --install` followed by a reboot — outside what Claude Code can do from a non-admin shell. Flagged to the user and deferred; in the meantime, the Dockerfile itself was validated via the GitHub Actions workflow, whose `ubuntu-latest` runner has Docker preinstalled — confirming the image builds correctly independent of the local Docker Desktop issue.
+
+## 8. Node.js already installed, but same stale-PATH issue as `gh`
+
+**Symptom:** `node`/`npx` not recognized, despite `winget install --id OpenJS.NodeJS.LTS` reporting "no upgrade found" (i.e., already installed).
+
+**Cause:** Same root cause as issue with `gh` earlier — the running shell's `PATH` predates Node's installation on this machine.
+
+**Fix:** Used the full path (`C:\Program Files\nodejs\node.exe`) within the session; resolves normally in a new terminal.
+
+## 9. Nested `npx`-inside-`npx` fails on Windows with a cryptic path error
+
+**Symptom:** Running the official MCP Inspector CLI to smoke-test a server (`npx @modelcontextprotocol/inspector --cli npx @modelcontextprotocol/server-filesystem <path> --method tools/list`) failed with `The filename, directory name, or volume label syntax is incorrect.` — regardless of whether the target path used forward or back slashes.
+
+**Cause:** Windows' `npx.cmd` wrapper spawning another `npx.cmd` (inspector spawning the target server) doesn't reliably pass through arguments/paths across that double layer of `.cmd` wrapper scripts.
+
+**Fix:** Bypassed the Inspector CLI entirely — wrote a small Node script (`docs/agentic-concepts/mcp-smoke-test.js`) that spawns the target MCP server directly and speaks the JSON-RPC protocol over its stdio by hand (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`). More code, but no nested-wrapper fragility, and it doubles as a clear illustration of what MCP actually looks like under the hood.
+
+## 10. `execSync("mvnw.cmd ...")` fails despite the file existing in `cwd`
+
+**Symptom:** A hook script (`.claude/hooks/compile-check.js`) calling `execSync("mvnw.cmd -q -o compile", { cwd: repoRoot })` failed with `'mvnw.cmd' is not recognized as an internal or external command`, even though `mvnw.cmd` exists directly in `repoRoot`.
+
+**Cause:** Node's `execSync` (via `cmd.exe`) doesn't reliably resolve a bare relative command name against the `cwd` option the way an interactive shell prompt would.
+
+**Fix:** Built the full path explicitly — `path.join(repoRoot, "mvnw.cmd")` — instead of relying on relative resolution.
+
+## 11. Newly-created subagents/skills/hooks/MCP servers aren't available mid-session
+
+**Symptom:** Immediately after creating `.claude/agents/java-spring-dev.md`, trying to spawn it (`subagent_type: "java-spring-dev"`) failed: `Agent type 'java-spring-dev' not found. Available agents: claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup`. The same session-scoped-discovery pattern was then independently confirmed for hooks (a new `PostToolUse` hook didn't fire on a real edit in the same session) and MCP servers (`.mcp.json` additions didn't appear in the tool list).
+
+**Cause:** Claude Code enumerates project-level subagents, skills, hooks, and MCP servers once at session start — none of the four are hot-reloaded when their backing files change mid-session.
+
+**Fix:** No fix, just a workflow adjustment — for anything in these four categories, verify by direct/manual invocation within the session that created it (e.g., running a hook script by hand with a synthetic payload, or having a generic agent read a persona file explicitly), and expect the "real" registered version to only be available starting from the next fresh session. See `docs/agentic-concepts/precedence-and-conflicts.md` for the full pattern.

@@ -37,8 +37,8 @@ Single-module Spring Boot 4.1.1 app (`com.example.sample` package, Java 21). It'
 
 - `SpringBootSampleApplication` — standard `@SpringBootApplication` entry point, no custom config.
 - `Item` — the sole JPA entity (`id`, `name` [`@NotBlank`], `description`).
-- `ItemRepository` — `JpaRepository<Item, Long>`, no custom query methods.
-- `ItemController` — full CRUD at `/api/items` (GET list, GET by id, POST, PUT, DELETE), using `@Valid` for request validation and `ResponseEntity` for 404/204 handling on not-found/delete.
+- `ItemRepository` — `JpaRepository<Item, Long>` plus one derived query method, `findByNameContainingIgnoreCase`.
+- `ItemController` — full CRUD at `/api/items` (GET list, GET by id, POST, PUT, DELETE) plus `GET /api/items/search?name={query}` (case-insensitive substring match; blank/missing query returns an empty list without hitting the database), using `@Valid` for request validation and `ResponseEntity` for 404/204 handling on not-found/delete.
 - `HelloController` — trivial `GET /api/hello` sanity endpoint, unrelated to the CRUD resource.
 
 **Persistence**: H2 in-memory database (`jdbc:h2:mem:sampledb`), schema auto-created via `spring.jpa.hibernate.ddl-auto=update` — data does not persist across restarts. The H2 web console is enabled at `/h2-console` (user `sa`, no password). All of this is configured in `src/main/resources/application.properties`; there's no `application-*.yml` profile split.
@@ -46,3 +46,12 @@ Single-module Spring Boot 4.1.1 app (`com.example.sample` package, Java 21). It'
 `ItemControllerTest` covers the CRUD flow end-to-end via `@SpringBootTest` + `MockMvc`; `SpringBootSampleApplicationTests` just checks the Spring context loads.
 
 **Spring Boot 4 package renames** (easy to trip on, since most examples/docs online still show the old paths): this app is on Boot 4.1, which moved to Jackson 3 and reorganized several test-support classes — `ObjectMapper` is `tools.jackson.databind.ObjectMapper` (not `com.fasterxml.jackson.databind`), and `AutoConfigureMockMvc` is `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` (not `org.springframework.boot.test.autoconfigure.web.servlet`). Check `mvnw dependency:tree` before assuming a class's package if a compile fails with "package does not exist" — this is a Boot 4 module-split issue, not a missing dependency.
+
+## Claude Code feature setup
+
+This repo doubles as a working demo of Claude Code's agentic features — see `docs/agentic-concepts/` for the full write-up (skills, subagents, multi-agent flow, hooks, MCP, plugins, and the `CLAUDE.md` hierarchy itself). Two things worth knowing before editing anything under `.claude/`:
+
+- Two `PostToolUse` hooks are configured in `.claude/settings.json` (`.claude/hooks/log-edit.js` and `compile-check.js`) — the second one runs a real `mvnw compile` after every `.java` edit. If that becomes disruptive, comment out its entry in `settings.json`.
+- `.mcp.json` declares a project-scoped filesystem MCP server. A fresh session in this directory will prompt to trust it before its tools become available.
+
+Also see `src/main/java/com/example/sample/CLAUDE.md` (subdirectory-level) and `E:\Projects\CLAUDE.md` (parent-directory-level) for the rest of the `CLAUDE.md` hierarchy demonstrated in this workspace.

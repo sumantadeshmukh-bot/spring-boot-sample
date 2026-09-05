@@ -22,6 +22,14 @@ public class ItemController {
         return itemRepository.findAll();
     }
 
+    @GetMapping("/search")
+    public List<Item> searchItems(@RequestParam(required = false) String name) {
+        if (name == null || name.isBlank()) {
+            return List.of();
+        }
+        return itemRepository.findByNameContainingIgnoreCase(name);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Item> getItem(@PathVariable Long id) {
         return itemRepository.findById(id)

@@ -34,6 +34,7 @@ The app listens on `http://localhost:8080`.
 | GET | `/api/hello` | Sanity-check endpoint |
 | GET | `/api/items` | List all items |
 | GET | `/api/items/{id}` | Get one item |
+| GET | `/api/items/search?name={query}` | Case-insensitive substring search by name |
 | POST | `/api/items` | Create an item (`{"name": "...", "description": "..."}`) |
 | PUT | `/api/items/{id}` | Update an item |
 | DELETE | `/api/items/{id}` | Delete an item |
@@ -61,11 +62,15 @@ docker run --rm -p 8080:8080 spring-boot-sample
 
 ## Claude Code setup
 
-This repo carries project-scoped Claude Code configuration:
+This repo doubles as a working foundation for Claude Code's agentic features — see **[`docs/agentic-concepts/`](docs/agentic-concepts/README.md)** for the full write-up: `CLAUDE.md` at four levels, skills (including a deliberate name-collision demo), two subagents run through a real build→review→fix cycle, two tested hooks, a working MCP server connection, and a scaffolded plugin example.
+
+Quick pointers:
 
 - [`CLAUDE.md`](CLAUDE.md) — architecture and commands for future Claude Code sessions.
 - [`.claude/skills/spring-boot-sample-dev/SKILL.md`](.claude/skills/spring-boot-sample-dev/SKILL.md) — build/test/run/Docker recipes as an invocable skill.
-- [`.claude/agents/java-spring-dev.md`](.claude/agents/java-spring-dev.md) — a subagent scoped to this repo's Java/Spring conventions.
+- [`.claude/agents/java-spring-dev.md`](.claude/agents/java-spring-dev.md) / [`spring-code-reviewer.md`](.claude/agents/spring-code-reviewer.md) — implementer + read-only reviewer subagents.
+- [`.claude/settings.json`](.claude/settings.json) + [`.claude/hooks/`](.claude/hooks/) — two `PostToolUse` hooks (edit logging, compile-on-save).
+- [`.mcp.json`](.mcp.json) — a project-scoped filesystem MCP server.
 
 See `CLAUDE_PLAYGROUND.md` in the parent workspace folder for how this fits into a broader user/workspace/project layering.
 

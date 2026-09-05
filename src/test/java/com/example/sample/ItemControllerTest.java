@@ -86,4 +86,38 @@ class ItemControllerTest {
         mockMvc.perform(get("/api/items/{id}", id))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void searchItemsFindsCaseInsensitiveMatch() throws Exception {
+        Item item = new Item("Sprocket", "a small metal part");
+        mockMvc.perform(post("/api/items")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/items/search").param("name", "sprock"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Sprocket')]").exists());
+    }
+
+    @Test
+    void searchItemsWithNoMatchReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/items/search").param("name", "no-such-item-xyz"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void searchItemsWithBlankOrMissingNameReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/items/search"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+
+        mockMvc.perform(get("/api/items/search").param("name", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
 }
